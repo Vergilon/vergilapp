@@ -1,0 +1,195 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+  <title>IQG</title>
+  <meta charset=utf-8>
+</head>
+<body>
+
+<canvas id="myCanvas" width="400" height="400" 
+  style="padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    width: 500px;">
+</canvas>
+<button onclick="RandomizeImageAndQuote(ctx)"
+  style="padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 10px;
+    display: block;
+    width: auto"> Randomize image and quote
+</button>
+
+<p> 
+</p>
+
+<div style="text-align:center">
+<a id="statusLink">
+  Click button to upload file
+</a>
+
+</div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+var generateBlock = false;
+RandomizeImageAndQuote(ctx);
+
+function RandomizeImageAndQuote(context) {
+    if (generateBlock == true) return;
+    var statusLink = document.getElementById("statusLink");
+    statusLink.removeAttribute("href");
+    statusLink.innerHTML = "Загрузка";
+
+    generateBlock = true;
+
+    var image = new Image();
+    image.crossOrigin = "Anonymous";
+    image.onload = function() {
+        context.drawImage(image, 0,0);
+        var averageOppositeHEX = getOppositeBWColor(getAverageRGBOfBottom(context));
+        context.fillStyle = averageOppositeHEX;
+        writeRandomizedText(context);
+    }
+    image.src = "https://picsum.photos/400/?random&" + new Date().getTime();;
+
+    $(document).ready(function() {
+    var imageLoaded = function() {
+        // Run onload code.
+    }
+    $('#img').each(function() {
+        var tmpImg = new Image() ;
+        tmpImg.onload = imageLoaded ;
+        tmpImg.src = $(this).attr('src') ;
+    }) ;
+    }) ;
+}
+
+function writeRandomizedText(context){
+  $(document).ready(function () {
+    $.getJSON("https://api.forismatic.com/api/1.0/?method=getQuote&lang=en&format=jsonp&jsonp=?", function(data) {
+      writeText(context, data.quoteText);
+    });
+  })
+}
+
+function writeText(context, quote){
+  context.font="20px Arial";
+  printAtWordWrap(ctx, quote, 10, 300, 20, 390);
+
+  var c=document.getElementById("myCanvas");
+  var d=c.toDataURL("image/png");
+  sendImageToServer(d);
+
+  generateBlock = false;
+}
+
+function printAtWordWrap( context , text, x, y, lineHeight, fitWidth)
+{
+    fitWidth = fitWidth || 0;
+    
+    if (fitWidth <= 0)
+    {
+        context.fillText( text, x, y );
+        return;
+    }
+    var words = text.split(' ');
+    var currentLine = 0;
+    var idx = 1;
+    while (words.length > 0 && idx <= words.length)
+    {
+        var str = words.slice(0,idx).join(' ');
+        var w = context.measureText(str).width;
+        if ( w > fitWidth )
+        {
+            if (idx==1)
+            {
+                idx=2;
+            }
+            context.fillText( words.slice(0,idx-1).join(' '), x, y + (lineHeight*currentLine) );
+            currentLine++;
+            words = words.splice(idx-1);
+            idx = 1;
+        }
+        else
+        {idx++;}
+    }
+    if  (idx > 0)
+        context.fillText( words.join(' '), x, y + (lineHeight*currentLine) );
+}
+
+function getAverageRGBOfBottom(context) {
+
+    var blockSize = 5, // only visit every 5 pixels
+        defaultRGB = {r:0,g:0,b:0}, // for non-supporting envs
+        data, width, height,
+        i = -4,
+        length,
+        rgb = {r:0,g:0,b:0},
+        count = 0;
+
+    if (!context) {
+        return defaultRGB;
+    }
+
+    height = context.canvas.height;
+    width = context.canvas.width;
+
+    try {
+        data = context.getImageData(0, height / 2, width, height);
+    } catch(e) {
+        console.error(e);
+        return defaultRGB;
+    }
+
+    length = data.data.length;
+
+    while ( (i += blockSize * 4) < length ) {
+        ++count;
+        rgb.r += data.data[i];
+        rgb.g += data.data[i+1];
+        rgb.b += data.data[i+2];
+    }
+
+    // ~~ used to floor values
+    rgb.r = ~~(rgb.r/count);
+    rgb.g = ~~(rgb.g/count);
+    rgb.b = ~~(rgb.b/count);
+
+    return rgb;
+
+}
+
+function getOppositeBWColor(rgb) {
+    return (rgb.r + rgb.g + rgb.b > 128)
+            ? '#000000'
+            : '#FFFFFF';
+}
+
+function sendImageToServer(dataURL) {
+  
+  $.ajax({
+  type: "POST",
+  url: "script.php",
+  data: { 
+     imgBase64: dataURL
+  }
+}).complete(function(o) {
+  var statusLink = document.getElementById("statusLink");
+  statusLink.setAttribute("href", "http://testingfrol.herokuapp.com/" + o.responseText);
+  statusLink.innerHTML = "http://testingfrol.herokuapp.com/" + o.responseText;
+});
+
+}
+
+</script>
+
+</body>
+</html>
